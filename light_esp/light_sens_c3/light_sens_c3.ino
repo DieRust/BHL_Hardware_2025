@@ -13,7 +13,10 @@
 
 void set_led_level(int actual_light_level);
 void setup_distance_sensor();
+void smoth_startup(int aim_pwm);
+void smoth_turnoff();
 float measure_distance();
+
 
 int sensorValue = 0; 
 int light_level_of_darknes = 1800;
@@ -23,6 +26,7 @@ unsigned long currentTime;
 unsigned long prevTime;
 int time_light_led = 5; // time in seconds
 int samples_of_time = 0;
+int led_state_pwm = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -52,8 +56,13 @@ void loop() {
       Serial.println(sensorValue);
       set_led_level(sensorValue);
       samples_of_time--;
+      if(samples_of_time == 0){
+        smoth_turnoff();
+        led_state_pwm = 0;
+      }
     }else{
-      ledcWrite(LED_PIN, 0);
+      ledcWrite(LED_PIN, MIN_PWM);
+      
     }
   }
   
@@ -68,9 +77,30 @@ void set_led_level(int actual_light_level){
     int pulse_width = pulse_width_f * 255;
     if(pulse_width > MAX_PWM)
       pulse_width = MAX_PWM;
+    if(led_state_pwm == 0){
+      smoth_startup(pulse_width);
+    }
+    led_state_pwm = pulse_width;
     ledcWrite(LED_PIN, pulse_width);
   }
 }
+
+void smoth_startup(int aim_pwm){
+  for(int dutyCycle = MIN_PWM; dutyCycle <= aim_pwm; dutyCycle++){   
+    // changing the LED brightness with PWM
+    ledcWrite(LED_PIN, dutyCycle);
+    delay(1);
+  }
+}
+
+void smoth_turnoff(){
+for(int dutyCycle = led_state_pwm; dutyCycle >= MIN_PWM; dutyCycle--){
+    // changing the LED brightness with PWM
+    ledcWrite(LED_PIN, dutyCycle);   
+    delay(1);
+  }
+};
+
 
 void setup_distance_sensor(){
   pinMode(TRIGPIN, OUTPUT); // Sets the trigPin as an Output
@@ -93,3 +123,4 @@ float measure_distance(){
 
   return distanceCm;
 }
+
