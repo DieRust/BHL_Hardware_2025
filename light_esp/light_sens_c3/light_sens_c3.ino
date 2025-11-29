@@ -10,31 +10,52 @@
 //define sound speed in cm/uS
 #define SOUND_SPEED 0.034
 #define DETECT_DISTANCE 10.0 //value between 0-255
+#define NUMBER_OF_LED 5
 
-void set_led_level(int actual_light_level);
+typedef struct ledstruct{
+  int pin;
+  int samples_of_time;
+  int state_pwm; 
+} Ledstruct;
+
+
+void set_led_level(Ledstruct *led, int actual_light_level);
 void setup_distance_sensor();
-void smoth_startup(int aim_pwm);
-void smoth_turnoff();
+void smoth_startup(int led_pin, int aim_pwm);
+void smoth_turnoff(int led_pin, int actual_pwm);
 float measure_distance();
 
 
 int sensorValue = 0; 
 int light_level_of_darknes = 1800;
 int set_light_level = 2500;
-int motion_detect = 0;
 unsigned long currentTime;
 unsigned long prevTime;
 int time_light_led = 5; // time in seconds
 int samples_of_time = 0;
-int led_state_pwm = 0;
+
+Ledstruct led_array[NUMBER_OF_LED];
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  ledcAttach(LED_PIN, FREQ, RES);
+  
   setup_distance_sensor();
   Serial.println("im alive");
-
+  for(int i = 0; i < NUMBER_OF_LED; i++){
+    led_array[i].samples_of_time = 0;
+    led_array[i].state_pwm = 0;
+  }
+  led_array[0].pin = 10;
+  ledcAttach(led_array[0].pin, FREQ, RES);
+  led_array[1].pin = 9;
+  ledcAttach(led_array[1].pin, FREQ, RES);
+  led_array[2].pin = 8;
+  ledcAttach(led_array[2].pin, FREQ, RES);
+  led_array[3].pin = 7;
+  ledcAttach(led_array[3].pin, FREQ, RES);
+  led_array[4].pin = 6;
+ledcAttach(led_array[4].pin, FREQ, RES);
   prevTime = millis();
 }
 
@@ -47,56 +68,68 @@ void loop() {
     prevTime = currentTime;
 
     if(distance < DETECT_DISTANCE){
-      samples_of_time = time_light_led * 10;
+      for(int i = 0; i < NUMBER_OF_LED; i++){
+        if(led_array[i].samples_of_time > 0){
+          led_array[i].samples_of_time = time_light_led * 10;
+        }else{
+          led_array[i].samples_of_time = time_light_led * 10 + i*2;
+        }
+        
+      }
     }
 
-    if(samples_of_time > 0){
-      sensorValue = analogRead(PHOTO_DETECTOR_PIN);
-      Serial.print("value of detect light: ");
-      Serial.println(sensorValue);
-      set_led_level(sensorValue);
-      samples_of_time--;
-      if(samples_of_time == 0){
-        smoth_turnoff();
-        led_state_pwm = 0;
+    sensorValue = analogRead(PHOTO_DETECTOR_PIN);
+    Serial.print("value of detect light: ");
+    Serial.println(sensorValue);
+
+    for(int i = 0; i < NUMBER_OF_LED; i++){
+      if(led_array[i].samples_of_time > 0){
+        if(led_array[i].samples_of_time < time_light_led * 10){
+          set_led_level(&led_array[i], sensorValue);
+        }
+        led_array[i].samples_of_time--;
+        if(led_array[i].samples_of_time == 0){
+          smoth_turnoff(led_array[i].pin, led_array[i].state_pwm);
+          led_array[i].state_pwm = 0;
+        }
+      }else{
+        ledcWrite(led_array[i].pin, MIN_PWM);
       }
-    }else{
-      ledcWrite(LED_PIN, MIN_PWM);
       
     }
   }
   
 }
 
-void set_led_level(int actual_light_level){
+void set_led_level(Ledstruct *led, int actual_light_level){
   int error = set_light_level - actual_light_level;
   if (error <= 0){
-    ledcWrite(LED_PIN, MIN_PWM);
+    ledcWrite(led->pin, MIN_PWM);
   }else{
     float pulse_width_f = float(error) / float(set_light_level - light_level_of_darknes);
     int pulse_width = pulse_width_f * 255;
     if(pulse_width > MAX_PWM)
       pulse_width = MAX_PWM;
-    if(led_state_pwm == 0){
-      smoth_startup(pulse_width);
+    if(led->state_pwm == 0){
+      smoth_startup(led->pin, pulse_width);
     }
-    led_state_pwm = pulse_width;
-    ledcWrite(LED_PIN, pulse_width);
+    led->state_pwm = pulse_width;
+    ledcWrite(led->pin, pulse_width);
   }
 }
 
-void smoth_startup(int aim_pwm){
+void smoth_startup(int led_pin, int aim_pwm){
   for(int dutyCycle = MIN_PWM; dutyCycle <= aim_pwm; dutyCycle++){   
     // changing the LED brightness with PWM
-    ledcWrite(LED_PIN, dutyCycle);
+    ledcWrite(led_pin, dutyCycle);
     delay(1);
   }
 }
 
-void smoth_turnoff(){
-for(int dutyCycle = led_state_pwm; dutyCycle >= MIN_PWM; dutyCycle--){
+void smoth_turnoff(int led_pin, int actual_pwm){
+for(int dutyCycle = actual_pwm; dutyCycle >= MIN_PWM; dutyCycle--){
     // changing the LED brightness with PWM
-    ledcWrite(LED_PIN, dutyCycle);   
+    ledcWrite(led_pin, dutyCycle);   
     delay(1);
   }
 };
