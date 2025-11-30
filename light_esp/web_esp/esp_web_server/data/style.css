@@ -1,0 +1,189 @@
+body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #eef2f3, #dfe9f3);
+      padding: 30px;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 30px;
+      color: #222;
+    }
+
+    #map {
+      width: 100%;
+      max-width: 900px;
+      height: 350px;
+      margin: 20px auto;
+      background: #030865fe;
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    /* Ulica */
+    .street {
+        user-select: none;
+      position: absolute;
+      top: 220px;
+      left: 5%;
+      width: 90%;
+      height: 60px;
+      background: #404040;
+      border-radius: 15px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
+    }
+
+    /* Domy */
+    .house {
+        user-select: none;
+      width: 90px;
+      height: 110px;
+      background: #fff;
+      border-radius: 10px;
+      border: 2px solid #ccc;
+      position: absolute;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    /* Dach */
+    .roof {
+    user-select: none;
+	border-bottom: 30px solid #581111;
+	border-left: 35px solid transparent;
+	border-right: 35px solid transparent;
+	height: 0;
+	width: 90px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    position: absolute;
+    }
+    /* Drzwi */
+    .door {
+        user-select: none;
+      width: 15px;
+      height: 40px;
+      background: #481818;
+      border-radius: 4px;
+      border: 2px solid #0d0101;
+      position: absolute;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    /* Okno */
+    .window {
+        user-select: none;
+      width: 20px;
+      height: 20px;
+      background: #0d7ecf;
+      border-radius: 4px;
+      border: 2px solid #0d0101;
+      position: absolute;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    /* Lampy */
+    .lamp {
+        user-select: none;
+        width: 26px;
+        height: 26px;
+        background: #bbb;
+        border-radius: 50%;
+        border: 2px solid #333;
+        position: absolute;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .lamp:hover {
+      transform: scale(1.15);
+    }
+
+    .lamp.on {
+      background: #ffe066;
+      box-shadow: 0 0 15px #ffdd55;
+      border-color: #d4a200;
+    }
+
+    .lamp.off {
+        background: #bbb;
+        border: 2px solid #333;
+        transition: 0.3s;
+    }
+
+    .lamp_holder{
+        user-select: none;
+      width: 10px;
+      height: 46px;
+      background: #bbb;
+      border-radius: 8px;
+      border: 2px solid #333;
+      position: absolute;
+    }
+
+    /* Zanieczyszczenie */
+    .pollution {
+        user-select: none;
+      position: absolute;
+      top: -50px;
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2b8f09, #7edb0c);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    .pollution.danger {
+      background: linear-gradient(135deg, #b93f0f, #db690c);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+
+    }
+
+    /* Panel konfiguracji */
+    .config {
+      max-width: 900px;
+      margin: 30px auto;
+      background: #ffffffcc;
+      padding: 25px;
+      border-radius: 20px;
+      backdrop-filter: blur(6px);
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    .config label {
+      display: block;
+      font-weight: 600;
+      margin-top: 15px;
+    }
+
+    .config input {
+      width: 100%;
+      margin-top: 5px;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid #aaa;
+      font-size: 14px;
+    }
+    .button {
+        margin-top:10px;
+        padding:10px 20px;
+        border:none; 
+        border-radius:10px; 
+        background:#4a90e2; 
+        color:white; 
+        font-size:16px; 
+        cursor:pointer; 
+        box-shadow:0 3px 8px rgba(0,0,0,0.2);
+    }
+    .button:active {
+        background:#0f4686; 
+    }
