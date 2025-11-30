@@ -48,6 +48,11 @@
     <!-- Zanieczyszczenie -->
     <div class="pollution" id="poll1" style="top:100px; left:88px;">--</div>
     <div class="pollution" id="poll2" style="top:100px; left:788px;">--</div>
+  
+    <!-- Wilgotność -->
+    <div class="HumTemp" id="poll3" style="top:20px; left:310px;">--</div>
+    <!-- Temperatura -->
+    <div class="HumTemp" id="temp1" style="top:20px; left:580px;">--</div>
   </div>
 
   <div class="config">
@@ -86,7 +91,7 @@
     if(poll2_int > 400){
         document.getElementById("poll2").classList.toggle('danger');
     }
-
+    
     const darkSlider = document.querySelectorAll('input[type="range"]')[0];
     const timeInput = document.querySelectorAll('input[type="number"]')[0];
     const brightSlider = document.querySelectorAll('input[type="range"]')[1];
@@ -164,6 +169,64 @@
         console.error(error);
       });
   };
+let hum_state = 55;
+
+const updateHumidity = (id, endpoint) => {
+  fetch(endpoint)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${endpoint}`);
+      }
+      return response.text();
+    })
+    .then(data => {
+      const value = parseInt(data);
+
+      if (isNaN(value)) {
+        console.error("Nieprawidłowa wartość wilgotności:", data);
+        return;
+      }
+
+      hum_state = value;
+      const el = document.getElementById(id);
+      // jeśli chcesz tylko liczbę:
+      //el.innerText = value;         // np. "55"
+      // jeśli chcesz z procentem, daj tak:
+      el.innerText = value + " %";
+    })
+    .catch(error => {
+      console.error(error);
+    });
+};
+let temp_state = null;
+
+const updateTemperature = (id, endpoint) => {
+  fetch(endpoint)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${endpoint}`);
+      }
+      return response.text();
+    })
+    .then(data => {
+      const value = parseInt(data);
+
+      if (isNaN(value)) {
+        console.error("Nieprawidłowa wartość temperatury:", data);
+        return;
+      }
+
+      temp_state = value;
+      const el = document.getElementById(id);
+      // tylko liczba:
+      el.innerText = value;          // np. 23
+      // jeśli chcesz, możesz kiedyś zmienić na: el.innerText = value + " °C";
+    })
+    .catch(error => {
+      console.error(error);
+    });
+};
+
 
   // Update all sensors every 10 seconds
   setInterval(() => {
@@ -174,6 +237,8 @@
     updateSensorValue('lamp5', '/lamp5');
     updateCO2("poll1","/poll1");
     updateCO2("poll2","/poll2");
+    updateHumidity("poll3", "/poll3");
+    updateTemperature("temp1", "/poll4");
   }, 1000);
   </script>
 </body>

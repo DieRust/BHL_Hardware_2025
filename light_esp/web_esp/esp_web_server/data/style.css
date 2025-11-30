@@ -140,6 +140,26 @@ body {
       font-weight: 600;
       box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
+    .HumTemp {
+    user-select: none;
+    position: absolute;
+    top: -50px;
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* błękitny gradient */
+    background: linear-gradient(135deg, #9ed8ff, #c9ecff);
+
+    color: #003f6f; /* ciemnoniebieski, bardzo czytelny */
+    font-size: 12px;
+    font-weight: 600;
+
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  }
 
     .pollution.danger {
       background: linear-gradient(135deg, #b93f0f, #db690c);
