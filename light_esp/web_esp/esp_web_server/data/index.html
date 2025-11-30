@@ -50,7 +50,7 @@
     <div class="pollution" id="poll2" style="top:100px; left:788px;">--</div>
   
     <!-- Wilgotność -->
-    <div class="HumTemp" id="poll3" style="top:20px; left:310px;">--</div>
+    <div class="HumTemp" id="hum1" style="top:20px; left:310px;">--</div>
     <!-- Temperatura -->
     <div class="HumTemp" id="temp1" style="top:20px; left:580px;">--</div>
   </div>
@@ -79,6 +79,7 @@
 
     document.getElementById("poll1").innerText = "CO₂: 420";
     document.getElementById("poll2").innerText = "CO₂: 380";
+    document.getElementById("hum1").innerText = "wilgotność: 70%";
 
     let poll1_text  = document.getElementById("poll1").innerText.slice(5);
     let poll1_int = parseInt(poll1_text);
@@ -192,7 +193,7 @@ const updateHumidity = (id, endpoint) => {
       // jeśli chcesz tylko liczbę:
       //el.innerText = value;         // np. "55"
       // jeśli chcesz z procentem, daj tak:
-      el.innerText = value + " %";
+      el.innerText = "wilgotność: "+value + "%";
     })
     .catch(error => {
       console.error(error);
@@ -219,7 +220,7 @@ const updateTemperature = (id, endpoint) => {
       temp_state = value;
       const el = document.getElementById(id);
       // tylko liczba:
-      el.innerText = value;          // np. 23
+      el.innerText = value+ " °C";          // np. 23
       // jeśli chcesz, możesz kiedyś zmienić na: el.innerText = value + " °C";
     })
     .catch(error => {
@@ -237,7 +238,7 @@ const updateTemperature = (id, endpoint) => {
     updateSensorValue('lamp5', '/lamp5');
     updateCO2("poll1","/poll1");
     updateCO2("poll2","/poll2");
-    updateHumidity("poll3", "/poll3");
+    updateHumidity("hum1", "/poll3");
     updateTemperature("temp1", "/poll4");
   }, 1000);
   </script>

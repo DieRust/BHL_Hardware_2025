@@ -49,6 +49,8 @@ AsyncWebServer server(80);
 String processor(const String& var);
 String getLedStatus(int led_number);
 String getPoll(int poll_number);
+String getHum();
+String getTemp();
 
 void setup() {
   pinMode(MIC_PIN, INPUT);
@@ -142,6 +144,13 @@ void setup() {
     request->send(200, "text/plain", getPoll(1).c_str());
   });
   
+  server.on("/poll3", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/plain", getHum().c_str());
+  });
+
+  server.on("/poll4", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/plain", getTemp().c_str());
+  });
 
   server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request){
     String msg;
@@ -213,4 +222,11 @@ String getPoll(int poll_number){
   }else{
     return String(polly_two);
   }
+}
+
+String getHum(){
+  return String(humidity, 3);
+}
+String getTemp(){
+  return String(tempdht, 3);
 }
