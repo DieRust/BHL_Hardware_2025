@@ -17,6 +17,7 @@
 #define MIC_PIN 2
 #define DHT_PIN 32
 #define DALLAS_PIN 26
+#define GAS_PIN 34
 
 #define SERVER_PORT 4080
 
@@ -31,7 +32,7 @@ const char* password = "Lubieroboty027";
 
 String PARAM_MESSAGE = "status";
 int polly_one = 390;
-int polly_two = 430;
+int polly_two = 380;
 int light_level_of_darknes = 1800;
 int set_light_level = 2500;
 int time_light_led = 5;
@@ -137,7 +138,7 @@ void setup() {
   });
 
   server.on("/poll1", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", getPoll(0).c_str());
+    request->send(200, "text/plain", getPoll(1).c_str());
   });
 
   server.on("/poll2", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -185,27 +186,19 @@ void setup() {
 
 void loop() {
   micData = analogRead(MIC_PIN);
+  polly_one = int(analogRead(GAS_PIN)/3000.0*500);
+  // Serial.println(polly_one);
   humidity = dht.readHumidity();
   tempdht = dht.readTemperature();
   temp = sensors.getTempCByIndex(0);
   
-  // WiFiClient client = TCPserver.available();
-
-  // if (client) {
-  //   uint8_t mess[5]; 
-  //   int len = client.read(mess, 35);
-    
-  //   for (int i=0; i< NUMBER_OF_LED; i++) {
-	// 	  led_array[i] = mess[i];
-  //   }
-  // }
 
   udp.broadcastTo("Real?", 1234);
   delay(1000);
 }
 
 String processor(const String& var){
-  return "sui";
+  return "";
 }
 
 String getLedStatus(int led_number){

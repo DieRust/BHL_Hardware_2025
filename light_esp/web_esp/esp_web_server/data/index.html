@@ -77,9 +77,8 @@
       };
     });
 
-    document.getElementById("poll1").innerText = "CO₂: 420";
+    document.getElementById("poll1").innerText = "CO₂: 0";
     document.getElementById("poll2").innerText = "CO₂: 380";
-    document.getElementById("hum1").innerText = "wilgotność: 70%";
 
     let poll1_text  = document.getElementById("poll1").innerText.slice(5);
     let poll1_int = parseInt(poll1_text);
@@ -138,8 +137,8 @@
       });
   };
 
-  let polly_state = [420,380];
-  let polly_state_prev = [420,380];
+  let polly_state = [0,380];
+  let polly_state_prev = [0,380];
 
   const updateCO2 = (id, endpoint) => {
     fetch(endpoint)
@@ -158,8 +157,8 @@
           if(polly_state[index] > 400 && polly_state_prev[index] <= 400){
             document.getElementById(id).classList.toggle('danger');
           }
-          if(polly_state[index] <= 400 && polly_state_prev[index] > 400){
-            document.getElementById(id).classist.toggle('danger');
+          if(polly_state[index] <= 400 && polly_state_prev[index] >= 400){
+            document.getElementById(id).classList.toggle('danger');
           }
 
           polly_state_prev[index] = polly_state[index];
@@ -237,7 +236,6 @@ const updateTemperature = (id, endpoint) => {
     updateSensorValue('lamp4', '/lamp4');
     updateSensorValue('lamp5', '/lamp5');
     updateCO2("poll1","/poll1");
-    updateCO2("poll2","/poll2");
     updateHumidity("hum1", "/poll3");
     updateTemperature("temp1", "/poll4");
   }, 1000);
