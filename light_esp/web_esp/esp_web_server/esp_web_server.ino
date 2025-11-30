@@ -6,6 +6,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include "DHT.h"
+#include "AsyncUDP.h"
 
 // DHT     - adafruit
 // Dallas  - Miles Burton
@@ -40,7 +41,9 @@ float humidity=0;
 float temp=0;
 float tempdht=0;
 
-WiFiServer TCPserver(SERVER_PORT);
+AsyncUDP udp;
+AsyncUDP udp_out;
+
 AsyncWebServer server(80);
 
 String processor(const String& var);
@@ -55,7 +58,6 @@ void setup() {
     Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
-
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -64,6 +66,43 @@ void setup() {
 
   Serial.println(WiFi.localIP());
 
+  if (udp.listen(1234)) {
+    Serial.print("UDP Listening on IP: ");
+    Serial.println(WiFi.localIP());
+    udp.onPacket([](AsyncUDPPacket packet) {
+      Serial.write(packet.data(), packet.length());
+      Serial.println();
+
+      for(int i=0;i<5;i++){
+        led_array[i] = packet.data()[i]-'0';
+      }
+      //reply to the client
+      packet.printf("Got %u bytes of data", packet.length());
+    });
+  }
+
+  if (udp_out.connect(IPAddress(192, 168, 1, 100), 1432)) {
+    Serial.println("UDP connected");
+    udp_out.onPacket([](AsyncUDPPacket packet) {
+      Serial.print("UDP Packet Type: ");
+      Serial.print(packet.isBroadcast() ? "Broadcast" : packet.isMulticast() ? "Multicast" : "Unicast");
+      Serial.print(", From: ");
+      Serial.print(packet.remoteIP());
+      Serial.print(":");
+      Serial.print(packet.remotePort());
+      Serial.print(", To: ");
+      Serial.print(packet.localIP());
+      Serial.print(":");
+      Serial.print(packet.localPort());
+      Serial.print(", Length: ");
+      Serial.print(packet.length());
+      Serial.print(", Data: ");
+      Serial.write(packet.data(), packet.length());
+      Serial.println();
+      //reply to the client
+      packet.printf("Got %u bytes of data", packet.length());
+    });}
+
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/index.html", String(), false, processor);
@@ -71,8 +110,8 @@ void setup() {
   });
 
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(LittleFS, "/style.css", "text/css");
-    request->send(200, "text/plain", "mlem");
+    request->send(LittleFS, "/style.css", "text/css");
+    // request->send(200, "text/plain", "mlem");
   });
 
   server.on("/lamp1", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -103,23 +142,6 @@ void setup() {
     request->send(200, "text/plain", getPoll(1).c_str());
   });
   
-  server.on("/getLightLevelDarknes", HTTP_GET, [](AsyncWebServerRequest *request){
-	char buff[5];
-	sprintf(buff, "%d", light_level_of_darknes);
-    request->send(200, "text/plain", buff);
-  });
-  
-  server.on("/getLightLevel", HTTP_GET, [](AsyncWebServerRequest *request){
-	char buff[5];
-	sprintf(buff, "%d", set_light_level);
-    request->send(200, "text/plain", buff);
-  });
-  
-  server.on("/getTimeLed", HTTP_GET, [](AsyncWebServerRequest *request){
-	char buff[5];
-	sprintf(buff, "%d", time_light_led);
-    request->send(200, "text/plain", buff);
-  });
 
   server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request){
     String msg;
@@ -129,14 +151,19 @@ void setup() {
             int index_of_space = msg.indexOf(' ');
             int index_of_hash = msg.indexOf('.');
             light_level_of_darknes = msg.substring(0,index_of_space).toInt();
+            String dark_msg = String("d"+String(light_level_of_darknes)); 
             time_light_led = msg.substring(index_of_space+1,index_of_hash).toInt();
+            String time_msg = String("t"+String(time_light_led));
             set_light_level = int(msg.substring(index_of_hash+1).toFloat()/100 * 3000);
+            String light_msg = String("l"+String(set_light_level)); 
             Serial.print("poziom czulosci swiatla: ");
             Serial.println(light_level_of_darknes);
             Serial.print("czas swiecenia swiatla: ");
             Serial.println(time_light_led);
             Serial.print("wymagany poziom jasnosci ulic: ");
             Serial.println(set_light_level);
+            String mega_msg = String(dark_msg+time_msg+light_msg);
+            udp_out.broadcastTo(mega_msg.c_str(), 1232);
         } else {
             msg = "No message sent";
         }
@@ -153,17 +180,19 @@ void loop() {
   tempdht = dht.readTemperature();
   temp = sensors.getTempCByIndex(0);
   
-  WiFiClient client = TCPserver.available();
+  // WiFiClient client = TCPserver.available();
 
-  if (client) {
-    uint8_t mess[5]; 
-    int len = client.read(mess, 35);
+  // if (client) {
+  //   uint8_t mess[5]; 
+  //   int len = client.read(mess, 35);
     
-    for (int i=0; i< NUMBER_OF_LED; i++) {
-		  led_array[i] = mess[i];
-    }
-  }
+  //   for (int i=0; i< NUMBER_OF_LED; i++) {
+	// 	  led_array[i] = mess[i];
+  //   }
+  // }
 
+  udp.broadcastTo("Real?", 1234);
+  delay(1000);
 }
 
 String processor(const String& var){
