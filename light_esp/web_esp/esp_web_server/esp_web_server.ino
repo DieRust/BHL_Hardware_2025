@@ -3,16 +3,27 @@
 #include <AsyncTCP.h>
 #include <FS.h>
 #include <LittleFS.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include "DHT.h"
+
+// DHT     - adafruit
+// Dallas  - Miles Burton
+// Onewire - Paul Stof..
 
 #define NUMBER_OF_LED 5
 
+#define MIC_PIN 2
+#define DHT_PIN 32
+#define DALLAS_PIN 26
+
 #define SERVER_PORT 4080
 
-typedef struct ledstruct{
-  int pin;
-  int samples_of_time;
-  int state_pwm; 
-} Ledstruct;
+DHT dht(DHT_PIN, DHT11);
+
+// temp
+OneWire oneWire(DALLAS_PIN);
+DallasTemperature sensors(&oneWire);
 
 const char* ssid = "Oneplus";
 const char* password = "Lubieroboty027";
@@ -23,7 +34,11 @@ int polly_two = 430;
 int light_level_of_darknes = 1800;
 int set_light_level = 2500;
 int time_light_led = 5;
-Ledstruct led_array[NUMBER_OF_LED];
+int led_array[NUMBER_OF_LED];
+int micData=0;
+float humidity=0;
+float temp=0;
+float tempdht=0;
 
 WiFiServer TCPserver(SERVER_PORT);
 AsyncWebServer server(80);
@@ -33,8 +48,8 @@ String getLedStatus(int led_number);
 String getPoll(int poll_number);
 
 void setup() {
-  // put your setup code here, to run once:
-
+  pinMode(MIC_PIN, INPUT);
+  pinMode(DHT_PIN, INPUT);
   Serial.begin(9600);
   if(!LittleFS.begin()){
     Serial.println("An Error has occurred while mounting LittleFS");
@@ -52,10 +67,12 @@ void setup() {
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(LittleFS, "/index.html", String(), false, processor);
+    //request->send(200, "text/plain", "mlem");
   });
 
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(LittleFS, "/style.css", "text/css");
+    //request->send(LittleFS, "/style.css", "text/css");
+    request->send(200, "text/plain", "mlem");
   });
 
   server.on("/lamp1", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -85,6 +102,24 @@ void setup() {
   server.on("/poll2", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", getPoll(1).c_str());
   });
+  
+  server.on("/getLightLevelDarknes", HTTP_GET, [](AsyncWebServerRequest *request){
+	char buff[5];
+	sprintf(buff, "%d", light_level_of_darknes);
+    request->send(200, "text/plain", buff);
+  });
+  
+  server.on("/getLightLevel", HTTP_GET, [](AsyncWebServerRequest *request){
+	char buff[5];
+	sprintf(buff, "%d", set_light_level);
+    request->send(200, "text/plain", buff);
+  });
+  
+  server.on("/getTimeLed", HTTP_GET, [](AsyncWebServerRequest *request){
+	char buff[5];
+	sprintf(buff, "%d", time_light_led);
+    request->send(200, "text/plain", buff);
+  });
 
   server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request){
     String msg;
@@ -107,61 +142,26 @@ void setup() {
         }
   });
 
-  
+  sensors.begin();
+  dht.begin();
   server.begin();
-
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  micData = analogRead(MIC_PIN);
+  humidity = dht.readHumidity();
+  tempdht = dht.readTemperature();
+  temp = sensors.getTempCByIndex(0);
+  
   WiFiClient client = TCPserver.available();
 
   if (client) {
-    uint8_t mess[35]; 
+    uint8_t mess[5]; 
     int len = client.read(mess, 35);
-    int id = mess[0];
-    if (id < max_c) {
-      user_array[id].id = mess[0];
-      for (int i{0}; i<16; i++)
-        user_array[id].name[i] = mess[1+i];
-
-      uint32_t temp;
-      temp = mess[20];
-      temp |= mess[19]<<8;
-      temp |= mess[18]<<16;
-      temp |= mess[17]<<24;
-      user_array[id].temp = ((float)temp);
-
-      temp = mess[24];
-      temp |= mess[23]<<8;
-      temp |= mess[22]<<16;
-      temp |= mess[21]<<24;
-      user_array[id].presure = ((float)temp);
-
-      user_array[id].battery = mess[25];
-
-      user_array[id].saturation = mess[26];
-
-      user_array[id].humidity = mess[27];
-
-      user_array[id].heart_rate = mess[28];
-
-      uint16_t CO2;
-      CO2 = mess[30];
-      CO2 |= mess[29];
-      user_array[id].C02 = CO2;
-      temp = mess[34];
-      temp |= mess[33]<<8;
-      temp |= mess[32]<<16;
-      temp |= mess[31]<<24;
-      user_array[id].rtctime = temp;
+    
+    for (int i=0; i< NUMBER_OF_LED; i++) {
+		  led_array[i] = mess[i];
     }
-    Serial.print(user_array[id].id);
-    Serial.print(" ");
-    Serial.print(id);
-    Serial.print(" ");
-    Serial.println(user_array[id].rtctime);
-    client.stop();
   }
 
 }
@@ -171,7 +171,7 @@ String processor(const String& var){
 }
 
 String getLedStatus(int led_number){
-  if(led_array[led_number].state_pwm > 0){
+  if(led_array[led_number] > 0){
     return "on";
   }else{
     return "off";
