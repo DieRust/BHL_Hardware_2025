@@ -1,5 +1,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include "AsyncUDP.h"
+#include <stdlib.h>
 
 #define PHOTO_DETECTOR_PIN 0 
 #define MAX_LIGHT_DETECt 3300
@@ -21,17 +23,19 @@ typedef struct ledstruct{
   int state_pwm; 
 } Ledstruct;
 
-const int   serverPort    = 4080;
-const char* serverAddress = "192.168.4.1";
-String serverNameForDarkness = "http://192.168.4.1:80/getLightLevelDarknes";
-String serverNameForLight = "http://192.168.4.1:80/getLightLevel";
-String serverNameForTimeLed = "http://192.168.4.1:80/getTimeLed";
+const uint16_t   serverPort    = 4080;
+const char* serverAddress = "192.168.137.186";
+String serverNameForDarkness = "http://192.168.137.186:80/getLightLevelDarknes";
+String serverNameForLight = "http://192.168.137.186:80/getLightLevel";
+String serverNameForTimeLed = "http://192.168.137.186:80/getTimeLed";
 
 
 const char* ssid = "Oneplus";
 const char* password = "Lubieroboty027";
 
-WiFiClient TCPclient;
+// WiFiClient TCPclient;
+AsyncUDP udp;
+AsyncUDP udp_in;
 HTTPClient http;
 
 void set_led_level(Ledstruct *led, int actual_light_level);
@@ -52,41 +56,17 @@ String PARAM_MESSAGE = "status";
 
 Ledstruct led_array[NUMBER_OF_LED];
 
-int get_time_led() {
-  http.begin(TCPclient, serverNameForTimeLed.c_str());
-  int httpResponseCode = http.GET();
-  String payload = http.getString();
-  http.end();
-  return payload.toInt();
-}
-
-int get_darknes_level() {
-  http.begin(TCPclient, serverNameForDarkness.c_str());
-  int httpResponseCode = http.GET();
-  String payload = http.getString();
-  http.end();
-  return payload.toInt();
-}
-
-int get_light_level() {
-  http.begin(TCPclient, serverNameForLight.c_str());
-  int httpResponseCode = http.GET();
-  String payload = http.getString();
-  http.end();
-  return payload.toInt();
-}
-
 void send_to_host() {
   byte mess[5];
 
-  mess[0] = led_array[0].state_pwm > 0 ? 1 : 0;
-  mess[1] = led_array[1].state_pwm > 0 ? 1 : 0;
-  mess[2] = led_array[2].state_pwm > 0 ? 1 : 0;
-  mess[3] = led_array[3].state_pwm > 0 ? 1 : 0;
-  mess[4] = led_array[4].state_pwm > 0 ? 1 : 0;
-
-  TCPclient.write(mess,35);
-  TCPclient.flush();
+  mess[0] = led_array[0].state_pwm > 0 ? '1' : '0';
+  mess[1] = led_array[1].state_pwm > 0 ? '1' : '0';
+  mess[2] = led_array[2].state_pwm > 0 ? '1' : '0';
+  mess[3] = led_array[3].state_pwm > 0 ? '1' : '0';
+  mess[4] = led_array[4].state_pwm > 0 ? '1' : '0';
+  udp.broadcastTo(mess, 5, 1234);
+  // TCPclient.write(mess,35);
+  // TCPclient.flush();
 }
 
 
@@ -99,11 +79,61 @@ void setup() {
     delay(1000);
     Serial.println("Connecting to WiFi..");
   }
-  while(!TCPclient.connect(serverAddress, serverPort)) {
-    Serial.println("Failed to connect to host, retrying in 1s");
-    delay(1000);
-  }
+  Serial.println(WiFi.localIP());
+
   Serial.println("Connected to host");
+
+  if (udp.connect(IPAddress(192, 168, 1, 100), 1234)) {
+    Serial.println("UDP connected");
+    udp.onPacket([](AsyncUDPPacket packet) {
+      Serial.print("UDP Packet Type: ");
+      Serial.print(packet.isBroadcast() ? "Broadcast" : packet.isMulticast() ? "Multicast" : "Unicast");
+      Serial.print(", From: ");
+      Serial.print(packet.remoteIP());
+      Serial.print(":");
+      Serial.print(packet.remotePort());
+      Serial.print(", To: ");
+      Serial.print(packet.localIP());
+      Serial.print(":");
+      Serial.print(packet.localPort());
+      Serial.print(", Length: ");
+      Serial.print(packet.length());
+      Serial.print(", Data: ");
+      Serial.write(packet.data(), packet.length());
+      Serial.println();
+      //reply to the client
+      packet.printf("Got %u bytes of data", packet.length());
+    });}
+    //Send unicast
+    udp.print("Hello Server!");
+
+  if (udp_in.listen(1232)) {
+    Serial.print("UDP Listening on IP: ");
+    Serial.println(WiFi.localIP());
+    udp_in.onPacket([](AsyncUDPPacket packet) {
+      Serial.write(packet.data(), packet.length());
+      Serial.println();
+      String msg="";
+      for(int i =0; i<packet.length(); i++){
+        msg.concat(char(packet.data()[i]));
+      }
+      int index_d = msg.indexOf('d');
+      int index_t = msg.indexOf('t');
+      int index_l = msg.indexOf('l');
+
+      light_level_of_darknes = msg.substring(index_d+1,index_t).toInt();
+      time_light_led = msg.substring(index_t+1,index_l).toInt();
+      set_light_level = msg.substring(index_l+1).toInt();
+      Serial.println(light_level_of_darknes);
+      Serial.println(time_light_led);
+      Serial.println(set_light_level);
+      // for(int i=0;i<5;i++){
+      //   led_array[i] = packet.data()[i]-'0';
+      // }
+      //reply to the client
+      packet.printf("Got %u bytes of data", packet.length());
+    });
+  }
 
   
   setup_distance_sensor();
@@ -162,14 +192,16 @@ void loop() {
 
   if((currentTime - prevTimeServer) > 1000){
     prevTimeServer = currentTime;
-    if(WiFi.status()== WL_CONNECTED ){ 
-      light_level_of_darknes = get_darknes_level();
-      set_light_level = get_light_level();
-      time_light_led = get_time_led();
-      Serial.println("wziolem dane");
-    }else{
-      Serial.println("nie ma fal");
-    }
+    send_to_host();
+    Serial.println("nie ma fal");
+    // if(WiFi.status()== WL_CONNECTED ){ 
+    //   light_level_of_darknes = get_darknes_level();
+    //   set_light_level = get_light_level();
+    //   time_light_led = get_time_led();
+    //   Serial.println("wziolem dane");
+    // }else{
+    //   Serial.println("nie ma fal");
+    // }
   }
   
 }
