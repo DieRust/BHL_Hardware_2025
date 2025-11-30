@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <title>System Lamp Ulicznych</title>
+
+</head>
+<body>
+  <h1>System Monitoringu Lamp Ulicznych</h1>
+
+  <div id="map">
+    <div class="street"></div>
+
+    <!-- Domy -->
+    <!-- Pierwszy dom -->
+    <div class="house" style="top:100px; left:150px;"></div>
+    <div class="roof" style="top:80px; left:118px;"></div>
+    <div class="door" style="top:169px; left:200px;"></div>
+    <div class="window" style="top:129px; left:160px;"></div>
+    <div class="window" style="top:129px; left:210px;"></div>
+    <!-- Drugi dom -->
+    <div class="house" style="top:100px; left:440px;"></div>
+    <div class="roof" style="top:80px; left:408px;"></div>
+    <div class="door" style="top:169px; left:490px;"></div>
+    <div class="window" style="top:129px; left:450px;"></div>
+    <div class="window" style="top:129px; left:500px;"></div>
+
+    <!-- Trzeci dom -->
+    <div class="house" style="top:100px; left:680px;"></div>
+    <div class="roof" style="top:80px; left:648px;"></div>
+    <div class="door" style="top:169px; left:730px;"></div>
+    <div class="window" style="top:129px; left:690px;"></div>
+    <div class="window" style="top:129px; left:740px;"></div>
+    <!-- Lampy -->
+    <div class="lamp_holder" id="lamp_h1" style="top:175px; left:108px;"></div>
+    <div class="lamp" id="lamp1" style="top:160px; left:100px;"></div>
+    <div class="lamp_holder" id="lamp_h1" style="top:175px; left:283px;"></div>
+    <div class="lamp" id="lamp2" style="top:160px; left:275px;"></div>
+    <div class="lamp_holder" id="lamp_h1" style="top:175px; left:458px;"></div>
+    <div class="lamp" id="lamp3" style="top:160px; left:450px;"></div>
+    <div class="lamp_holder" id="lamp_h1" style="top:175px; left:633px;"></div>
+    <div class="lamp" id="lamp4" style="top:160px; left:625px;"></div>
+    <div class="lamp_holder" id="lamp_h1" style="top:175px; left:808px;"></div>
+    <div class="lamp" id="lamp5" style="top:160px; left:800px;"></div>
+
+    <!-- Zanieczyszczenie -->
+    <div class="pollution" id="poll1" style="top:100px; left:88px;">--</div>
+    <div class="pollution" id="poll2" style="top:100px; left:788px;">--</div>
+  </div>
+
+  <div class="config">
+    <h2>Konfiguracja systemu</h2>
+    <button class="button" id="sendBtn" onclick="ButtonSend()">Wyślij dane</button>
+
+    <label>Czułość ciemności: <span id="darkVal">1000</span></label>
+    <input type="range" min="1" max="2000" value="1000" />
+
+    <label>Czas świecenia lamp po detekcji: <span id="timeVal">5</span> s</label>
+    <input type="number" min="1" max="60" value="5"/>
+
+    <label>Poziom jasności ulicy: <span id="brightVal">80</span> %</label>
+    <input type="range" min="1" max="100" value="80" />
+  </div>
+
+  <script>
+    const lamps = ["lamp1", "lamp2", "lamp3", "lamp4", "lamp5"]; 
+    lamps.forEach(id => {
+      document.getElementById(id).onclick = () => {
+        document.getElementById(id).classList.toggle('on');
+      };
+    });
+
+    document.getElementById("poll1").innerText = "CO₂: 420";
+    document.getElementById("poll2").innerText = "CO₂: 380";
+
+    let poll1_text  = document.getElementById("poll1").innerText.slice(5);
+    let poll1_int = parseInt(poll1_text);
+    if(poll1_int > 400){
+        document.getElementById("poll1").classList.toggle('danger');
+    }
+
+    let poll2_text  = document.getElementById("poll2").innerText.slice(5);
+    let poll2_int = parseInt(poll2_text);
+    if(poll2_int > 400){
+        document.getElementById("poll2").classList.toggle('danger');
+    }
+
+    const darkSlider = document.querySelectorAll('input[type="range"]')[0];
+    const timeInput = document.querySelectorAll('input[type="number"]')[0];
+    const brightSlider = document.querySelectorAll('input[type="range"]')[1];
+
+    darkSlider.oninput = () => document.getElementById('darkVal').innerText = darkSlider.value;
+    timeInput.oninput = () => document.getElementById('timeVal').innerText = timeInput.value;
+    brightSlider.oninput = () => document.getElementById('brightVal').innerText = brightSlider.value;
+
+    function ButtonSend(v) {
+        fetch( `/set?status=${darkSlider.value} ${timeInput.value}.${brightSlider.value}`)
+        .then( response => {
+            console.log(response);
+        } )
+        }
+    
+    let lamp_state = [0,0,0,0,0];
+
+    let lamp_state_prev = [0,0,0,0,0];
+
+
+    const updateSensorValue = (id, endpoint) => {
+    fetch(endpoint)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${endpoint}`);
+        }
+        return response.text();
+      })
+      .then(data => {
+        let index = id.charAt(4)-'0'-1;
+        if(data.localeCompare("on") == 0){
+          lamp_state[index] = 1;
+        }else{
+          lamp_state[index] = 0;
+        }
+        if(lamp_state[index] != lamp_state_prev[index]){
+          lamp_state_prev[index] = lamp_state[index];
+          document.getElementById(id).classList.toggle('on');
+        }
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  };
+
+  let polly_state = [420,380];
+  let polly_state_prev = [420,380];
+
+  const updateCO2 = (id, endpoint) => {
+    fetch(endpoint)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${endpoint}`);
+        }
+        return response.text();
+      })
+      .then(data => {
+        let index = id.charAt(4)-'0'-1;
+        polly_state[index] = parseInt(data);
+        if(polly_state[index] != polly_state_prev[index]){
+          
+          document.getElementById(id).innerText = "CO₂: "+data;
+          if(polly_state[index] > 400 && polly_state_prev[index] <= 400){
+            document.getElementById(id).classList.toggle('danger');
+          }
+          if(polly_state[index] <= 400 && polly_state_prev[index] > 400){
+            document.getElementById(id).classist.toggle('danger');
+          }
+
+          polly_state_prev[index] = polly_state[index];
+        }
+      })
+      .catch(error => {
+
+        console.error(error);
+      });
+  };
+
+  // Update all sensors every 10 seconds
+  setInterval(() => {
+    updateSensorValue('lamp1', '/lamp1');
+    updateSensorValue('lamp2', '/lamp2');
+    updateSensorValue('lamp3', '/lamp3');
+    updateSensorValue('lamp4', '/lamp4');
+    updateSensorValue('lamp5', '/lamp5');
+    updateCO2("poll1","/poll1");
+    updateCO2("poll2","/poll2");
+  }, 1000);
+  </script>
+</body>
+</html>

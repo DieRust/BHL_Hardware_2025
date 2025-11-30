@@ -1,6 +1,9 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
 #define PHOTO_DETECTOR_PIN 0 
 #define MAX_LIGHT_DETECt 3300
-#define LED_PIN 10
+#define LED_PIN 100
 #define MIN_PWM 10
 #define FREQ 5000
 #define RES 8
@@ -18,13 +21,17 @@ typedef struct ledstruct{
   int state_pwm; 
 } Ledstruct;
 
+String serverUrl = "http://192.168.137.103//api/api_leds/send";
+
+const char* ssid = "Oneplus";
+const char* password = "Lubieroboty027";
 
 void set_led_level(Ledstruct *led, int actual_light_level);
 void setup_distance_sensor();
 void smoth_startup(int led_pin, int aim_pwm);
 void smoth_turnoff(int led_pin, int actual_pwm);
 float measure_distance();
-
+int send_led_data();
 
 int sensorValue = 0; 
 int light_level_of_darknes = 1800;
@@ -33,6 +40,7 @@ unsigned long currentTime;
 unsigned long prevTime;
 int time_light_led = 5; // time in seconds
 int samples_of_time = 0;
+String PARAM_MESSAGE = "status";
 
 Ledstruct led_array[NUMBER_OF_LED];
 
@@ -42,20 +50,23 @@ void setup() {
   
   setup_distance_sensor();
   Serial.println("im alive");
+  led_array[0].pin = 10;
+  led_array[1].pin = 9;
+  led_array[2].pin = 8;
+  led_array[3].pin = 7;
+  led_array[4].pin = 6;
   for(int i = 0; i < NUMBER_OF_LED; i++){
     led_array[i].samples_of_time = 0;
     led_array[i].state_pwm = 0;
+    ledcAttach(led_array[i].pin, FREQ, RES);
   }
-  led_array[0].pin = 10;
-  ledcAttach(led_array[0].pin, FREQ, RES);
-  led_array[1].pin = 9;
-  ledcAttach(led_array[1].pin, FREQ, RES);
-  led_array[2].pin = 8;
-  ledcAttach(led_array[2].pin, FREQ, RES);
-  led_array[3].pin = 7;
-  ledcAttach(led_array[3].pin, FREQ, RES);
-  led_array[4].pin = 6;
-ledcAttach(led_array[4].pin, FREQ, RES);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+  
   prevTime = millis();
 }
 
@@ -79,8 +90,8 @@ void loop() {
     }
 
     sensorValue = analogRead(PHOTO_DETECTOR_PIN);
-    Serial.print("value of detect light: ");
-    Serial.println(sensorValue);
+    // Serial.print("value of detect light: ");
+    // Serial.println(sensorValue);
 
     for(int i = 0; i < NUMBER_OF_LED; i++){
       if(led_array[i].samples_of_time > 0){
@@ -92,6 +103,7 @@ void loop() {
           smoth_turnoff(led_array[i].pin, led_array[i].state_pwm);
           led_array[i].state_pwm = 0;
         }
+        send_led_data();
       }else{
         ledcWrite(led_array[i].pin, MIN_PWM);
       }
@@ -155,5 +167,24 @@ float measure_distance(){
   float distanceCm = duration * SOUND_SPEED/2;
 
   return distanceCm;
+}
+
+int send_led_data(){
+  if(WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverUrl);
+    http.addHeader("Content-Type", "application/json");
+
+    String msgg = "status=";
+    for(int i = 0; i < 5; i++){
+      if(led_array[i].state_pwm>0){
+        msgg.concat('1');
+      }else{
+        msgg.concat('0');
+      }
+    }
+    int code = http.POST(msgg);
+    http.end();
+  }
 }
 
